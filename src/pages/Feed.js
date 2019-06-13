@@ -8,6 +8,8 @@ import {
   StyleSheet
 } from 'react-native';
 
+import io from 'socket.io-client';
+
 import api from '../services/api';
 
 import camera from '../assets/camera.png';
@@ -33,10 +35,32 @@ export default class Feed extends Component {
   };
 
   async componentDidMount() {
+    this.registerToSocket();
+
     const response = await api.get('/posts');
 
     this.setState({ feed: response.data });
   }
+
+  registerToSocket = () => {
+    const socket = io('http://10.0.3.2:3000');
+
+    socket.on('post', newPost => {
+      this.setState({ feed: [newPost, ...this.state.feed] });
+    });
+
+    socket.on('like', likedPost => {
+      this.setState({
+        feed: this.state.feed.map(post =>
+          post._id === likedPost._id ? likedPost : post
+        )
+      });
+    });
+  };
+
+  handleLike = id => {
+    api.post(`/posts/${id}/like`);
+  };
 
   render() {
     return (
@@ -62,7 +86,10 @@ export default class Feed extends Component {
 
               <View style={styles.feedItemFooter}>
                 <View style={styles.actions}>
-                  <TouchableOpacity style={styles.action} onPress={() => {}}>
+                  <TouchableOpacity
+                    style={styles.action}
+                    onPress={() => this.handleLike(item._id)}
+                  >
                     <Image source={like} />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.action} onPress={() => {}}>
